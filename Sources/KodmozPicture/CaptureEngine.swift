@@ -109,10 +109,8 @@ final class CaptureEngine {
     private func copyToPasteboard(image: NSImage, url: URL) {
         let pb = NSPasteboard.general
         pb.clearContents()
-        pb.writeObjects([image])
-        // Dosya referansı da eklenir: Finder/WhatsApp gibi hedefler dosyayı tanır.
-        pb.addTypes([.fileURL], owner: nil)
-        pb.setString(url.absoluteString, forType: .fileURL)
+        // Görüntü + dosya referansı: Finder/WhatsApp/Slack dosyayı tanır.
+        pb.writeObjects([image, url as NSURL])
     }
 
     static func fileName(date: Date = Date()) -> String {

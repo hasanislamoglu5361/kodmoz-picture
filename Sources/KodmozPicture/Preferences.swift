@@ -1,4 +1,5 @@
 import AppKit
+import Carbon.HIToolbox
 import Foundation
 
 /// Tercihler — UserDefaults üzerinde ince bir sarmalayıcı.

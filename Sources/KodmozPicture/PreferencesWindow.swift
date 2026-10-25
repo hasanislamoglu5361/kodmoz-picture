@@ -176,7 +176,7 @@ final class PreferencesWindowController: NSWindowController {
         stack.addArrangedSubview(countPopup)
 
         // 6) Test
-        stack.addArrangedSubview(NSBox.separator())
+        stack.addArrangedSubview(NSBox.dikeyAyrac())
         let testRow = NSStackView()
         testRow.orientation = .horizontal
         testRow.spacing = 10
@@ -263,7 +263,7 @@ final class PreferencesWindowController: NSWindowController {
 }
 
 extension NSBox {
-    static func separator() -> NSBox {
+    static func dikeyAyrac() -> NSBox {
         let b = NSBox()
         b.boxType = .separator
         b.widthAnchor.constraint(equalToConstant: 470).isActive = true
