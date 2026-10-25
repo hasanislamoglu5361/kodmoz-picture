@@ -1,0 +1,46 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Swift sürümü
+        run: swift --version
+
+      - name: Derle (.app paketi)
+        run: ./scripts/build.sh
+
+      - name: Binary'yi doğrula
+        run: |
+          test -x "build/Kodmoz Picture.app/Contents/MacOS/KodmozPicture"
+          "build/Kodmoz Picture.app/Contents/MacOS/KodmozPicture" --make-icon "$PWD/build/icon-check"
+          test -f "build/icon-check/AppIcon.iconset/icon_512x512@2x.png"
+          echo "OK: ikon seti üretildi"
+
+      - name: Paketle
+        run: |
+          cd build
+          ditto -c -k --sequesterRsrc --keepParent "Kodmoz Picture.app" "KodmozPicture-macos.zip"
+          ls -la
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KodmozPicture-macos
+          path: build/KodmozPicture-macos.zip
+          retention-days: 30
+
+      - name: Sürüm çıktısı (tag)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/KodmozPicture-macos.zip
+          generate_release_notes: true
