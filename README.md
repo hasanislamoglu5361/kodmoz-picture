@@ -13,7 +13,7 @@ ve menü çubuğundaki simgeden **son görüntüleri küçük resimlerle** göst
 - **Global kısayol** (varsayılan `⌘⇧P`) — erişilebilirlik izni **gerektirmez** (Carbon `RegisterEventHotKey`)
 - **Panoya otomatik kopyalama** — görüntü + dosya referansı birlikte yazılır (WhatsApp/Finder/Slack hedefleri dosyayı tanır)
 - **Otomatik kayıt** — `~/Pictures/KodmozPicture/Kodmoz 2026-10-25 at 18.30.12.png` biçiminde, klasör değiştirilebilir
-- **Dört yakalama modu** — tüm ekranlar (ana ekran), alan seçimi (`-i`), pencere seçimi (`-w`)
+- **Dört yakalama modu** — tüm ekranlar (varsayılan), ana ekran (`-m`), alan seçimi (`-i`), pencere seçimi (`-w`)
 - **Menü çubuğu geçmişi** — son N görüntü küçük resimle listelenir; tıkla → Önizleme'de aç,
   alt menüden **Panoya Kopyala / Finder'da Göster / Çöp Kutusuna Taşı**
 - **Bildirim** — yakalanan görüntünün küçük önizlemesiyle bildirim banner'ı
@@ -21,7 +21,7 @@ ve menü çubuğundaki simgeden **son görüntüleri küçük resimlerle** göst
 - **Girişte otomatik başlat** — `SMAppService` ile (LaunchAgent dosyası elle kurcalanmaz)
 - **Vektörel logo** — ikon ve menü simgesi kodda `NSBezierPath` ile çizilir; harici görsel dosyası yok
 - **Dock'ta görünmez** (`LSUIElement`) — sadece menü çubuğu
-- **CLI** — `KodmozPicture --capture [full|selection|window]`, `KodmozPicture --make-icon <dizin>`
+- **CLI** — `KodmozPicture --capture [full|mainScreen|selection|window]`, `KodmozPicture --make-icon <dizin>`
 
 ## Logo
 
@@ -40,7 +40,13 @@ cd kodmoz-picture
 ```
 
 `install.sh` şunları yapar: `swift build -c release` → ikon seti (`.icns`) → `Kodmoz Picture.app`
-paketi → `/Applications` → `lsregister` + `killall Dock` → uygulamayı başlatır.
+paketi → çalışan kopyayı kapatır → `/Applications` → `lsregister` → uygulamayı başlatır.
+
+Evrensel (Apple Silicon + Intel) paket için: `./scripts/build.sh --universal`
+
+Derleme, varsa **Apple Development** imza kimliğini kullanır; böylece Ekran Kaydı izni
+sonraki derlemelerde korunur. Kimlik yoksa ad-hoc imzalar ve macOS her derlemede izni
+yeniden isteyebilir.
 
 ### İlk çalıştırma izni (tek sefer)
 
@@ -73,20 +79,24 @@ Sources/KodmozPicture/
   PreferencesWindow.swift  ayarlar arayüzü + kısayol kaydedici + SMAppService
   LogoRenderer.swift    vektörel logo (ikon + menü simgesi) ve .iconset üretimi
 scripts/
-  build.sh              .app paketi (ikon → bundle → ad-hoc imza)
+  build.sh              .app paketi (ikon → bundle → imza), --universal desteği
   install.sh            derle + /Applications'a kur + başlat
   logo_onizleme.py      README için PNG önizleme (Swift çiziminin eşi)
 ```
 
-Bağımlılık yok: yalnızca AppKit + Carbon + ServiceManagement + UserNotifications.
+Bağımlılık yok: yalnızca AppKit + Carbon + CoreGraphics + ServiceManagement + UserNotifications.
 Ekran görüntüsü `/usr/sbin/screencapture` ile alınır (Apple'ın kendi aracı).
 
 ## Sorun giderme
 
 - **Kısayol çalışmıyor** → başka bir uygulama `⌘⇧P`'yi kullanıyor olabilir; Ayarlar'dan başka kombinasyon seç.
-- **Siyah/boş görüntü** → Ekran Kaydı izni verilmemiş; yukarıdaki adımı uygula.
+- **Siyah/boş görüntü** → Ekran Kaydı izni verilmemiş; uygulama izni olmadığını algılayıp
+  Sistem Ayarları'nı açar. İzin verdikten sonra uygulamayı kapat-aç.
+- **"Uygulama hasarlı" uyarısı** → ad-hoc imza sonrası Gatekeeper uyarısı; `install.sh` karantinayı
+  temizler. Elle kopyaladıysan: `xattr -dr com.apple.quarantine "/Applications/Kodmoz Picture.app"`.
 - **Menü simgesi görünmüyor** → `killall SystemUIServer` veya uygulamayı yeniden başlat.
 - **Bildirim çıkmıyor** → Sistem Ayarları → Bildirimler → Kodmoz Picture → *Bildirimlere izin ver*.
+- **İki kopya çalışıyor** → `pkill -x KodmozPicture` sonra uygulamayı yeniden aç.
 
 ## Lisans
 

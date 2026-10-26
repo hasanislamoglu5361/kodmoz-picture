@@ -78,11 +78,11 @@ final class PreferencesWindowController: NSWindowController {
                                          target: nil, action: nil)
 
     convenience init() {
-        let win = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 520, height: 430),
+        // İçerik yüksekliği ~514 pt; pencere daha kısa olursa alt kısım kesilir.
+        let win = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 520, height: 560),
                            styleMask: [.titled, .closable],
                            backing: .buffered, defer: false)
         win.title = "Kodmoz Picture — Ayarlar"
-        win.center()
         self.init(window: win)
         buildUI()
     }
@@ -155,7 +155,7 @@ final class PreferencesWindowController: NSWindowController {
         note.state = Preferences.shared.showNotification ? .on : .off
         stack.addArrangedSubview(note)
 
-        let sound = NSButton(checkboxWithTitle: "Ses çal (Grab)",
+        let sound = NSButton(checkboxWithTitle: "Ses çal",
                             target: self, action: #selector(toggleSound(_:)))
         sound.state = Preferences.shared.playSound ? .on : .off
         stack.addArrangedSubview(sound)
@@ -194,6 +194,19 @@ final class PreferencesWindowController: NSWindowController {
         info.textColor = .tertiaryLabelColor
         info.widthAnchor.constraint(equalToConstant: 470).isActive = true
         stack.addArrangedSubview(info)
+
+        // Pencereyi içeriğe göre boyutlandır; sabit yükseklik alt satırları kesiyordu.
+        stack.bottomAnchor.constraint(greaterThanOrEqualTo: content.bottomAnchor,
+                                      constant: -20).isActive = true
+        content.layoutSubtreeIfNeeded()
+        let fitting = stack.fittingSize
+        if let win = window {
+            let height = fitting.height + 40
+            win.setContentSize(NSSize(width: max(520, fitting.width + 40), height: height))
+            win.styleMask.insert(.resizable)
+            win.contentMinSize = NSSize(width: 520, height: height)
+            win.center()
+        }
     }
 
     // MARK: - Eylemler

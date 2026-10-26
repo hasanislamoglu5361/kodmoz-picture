@@ -1,4 +1,5 @@
 import AppKit
+import CoreGraphics
 import Foundation
 
 enum CaptureMode: String, CaseIterable {
@@ -24,6 +25,9 @@ enum CaptureMode: String, CaseIterable {
         case .window: return "pencere"
         }
     }
+
+    /// Kullanıcı ESC ile iptal edebilir; iptal, hata gibi raporlanmamalı.
+    var isInteractive: Bool { self == .selection || self == .window }
 }
 
 struct CaptureResult {
@@ -38,6 +42,20 @@ final class CaptureEngine {
 
     private let fm = FileManager.default
 
+    private enum ScreencaptureOutcome {
+        case success
+        case cancelled
+        case failed
+    }
+
+    /// screencapture `-x` ile sessiz çalıştığı için sesi biz çalıyoruz.
+    /// "Grab" macOS'ta yok; sistemin kendi ekran görüntüsü sesini kullan.
+    private static let captureSound: NSSound? = {
+        let path = "/System/Library/Components/CoreAudio.component/Contents/SharedSupport"
+            + "/SystemSounds/system/Screen Capture.aif"
+        return NSSound(contentsOfFile: path, byReference: true) ?? NSSound(named: "Glass")
+    }()
+
     /// Ekran görüntüsü alır, diske yazar, panoya kopyalar.
     @discardableResult
     func capture(mode: CaptureMode) -> CaptureResult? {
@@ -46,18 +64,34 @@ final class CaptureEngine {
             NSSound.beep()
             return nil
         }
-        let url = folder.appendingPathComponent(Self.fileName())
-        guard runScreencapture(mode: mode, to: url), fm.fileExists(atPath: url.path) else {
+        let url = uniqueURL(in: folder)
+        switch runScreencapture(mode: mode, to: url) {
+        case .success:
+            break
+        case .cancelled:
+            // Kullanıcı ESC ile vazgeçti: ses/bip yok, dosya da yok.
+            try? fm.removeItem(at: url)
+            return nil
+        case .failed:
+            try? fm.removeItem(at: url)
+            if !CGPreflightScreenCaptureAccess() {
+                showScreenRecordingAlert()
+            } else {
+                NSSound.beep()
+            }
+            return nil
+        }
+        guard let image = NSImage(contentsOf: url) else {
+            NSLog("KodmozPicture: görüntü okunamadı \(url.path)")
             NSSound.beep()
             return nil
         }
-        guard let image = NSImage(contentsOf: url) else { return nil }
 
         if Preferences.shared.copyToClipboard {
             copyToPasteboard(image: image, url: url)
         }
         if Preferences.shared.playSound {
-            NSSound(named: "Grab")?.play()
+            Self.captureSound?.play()
         }
         return CaptureResult(url: url, image: image, mode: mode, createdAt: Date())
     }
@@ -78,13 +112,15 @@ final class CaptureEngine {
         }
     }
 
-    private func runScreencapture(mode: CaptureMode, to url: URL) -> Bool {
+    private func runScreencapture(mode: CaptureMode, to url: URL) -> ScreencaptureOutcome {
+        try? fm.removeItem(at: url)
+
         let p = Process()
         p.executableURL = URL(fileURLWithPath: "/usr/sbin/screencapture")
         var args = ["-x", "-t", "png"]
         switch mode {
-        case .full: args.append("-m")            // ana ekran (çoklu monitörde tek dosya)
-        case .mainScreen: break
+        case .full: break                        // tüm ekranlar (varsayılan)
+        case .mainScreen: args.append("-m")      // yalnızca ana ekran
         case .selection: args.append("-i")       // etkileşimli alan seçimi
         case .window: args.append("-w")          // pencere seçimi
         }
@@ -97,13 +133,24 @@ final class CaptureEngine {
             p.waitUntilExit()
         } catch {
             NSLog("KodmozPicture: screencapture çalıştırılamadı — \(error)")
-            return false
+            return .failed
         }
-        if p.terminationStatus != 0 {
-            // Kullanıcı ESC ile iptal ettiyse dosya oluşmaz; hata saymıyoruz.
-            return p.terminationStatus == 0 || fm.fileExists(atPath: url.path)
+
+        if hasImage(at: url) { return .success }
+        // Etkileşimli modlarda dosya yoksa kullanıcı iptal etmiştir.
+        if mode.isInteractive { return .cancelled }
+        let stderr = String(data: errPipe.fileHandleForReading.readDataToEndOfFile(),
+                            encoding: .utf8) ?? ""
+        if !stderr.isEmpty {
+            NSLog("KodmozPicture: screencapture hatası — \(stderr.trimmingCharacters(in: .whitespacesAndNewlines))")
         }
-        return true
+        return .failed
+    }
+
+    private func hasImage(at url: URL) -> Bool {
+        guard let attrs = try? fm.attributesOfItem(atPath: url.path),
+              let size = attrs[.size] as? NSNumber else { return false }
+        return size.intValue > 0
     }
 
     private func copyToPasteboard(image: NSImage, url: URL) {
@@ -113,11 +160,38 @@ final class CaptureEngine {
         pb.writeObjects([image, url as NSURL])
     }
 
+    private func showScreenRecordingAlert() {
+        guard NSApp.isRunning, Bundle.main.bundleIdentifier != nil else { return }
+        let alert = NSAlert()
+        alert.messageText = "Ekran Kaydı izni gerekiyor"
+        alert.informativeText = "Sistem Ayarları → Gizlilik ve Güvenlik → Ekran Kaydı "
+            + "bölümünde Kodmoz Picture'ı işaretleyin, sonra uygulamayı yeniden başlatın."
+        alert.addButton(withTitle: "Ayarları Aç")
+        alert.addButton(withTitle: "Kapat")
+        if alert.runModal() == .alertFirstButtonReturn,
+           let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
+            NSWorkspace.shared.open(url)
+        }
+    }
+
     static func fileName(date: Date = Date()) -> String {
         let f = DateFormatter()
         f.locale = Locale(identifier: "en_US_POSIX")
         f.dateFormat = "yyyy-MM-dd 'at' HH.mm.ss"
         return "Kodmoz \(f.string(from: date)).png"
+    }
+
+    /// Aynı saniyedeki ikinci yakalama önceki dosyayı ezmesin.
+    private func uniqueURL(in folder: URL) -> URL {
+        let base = Self.fileName()
+        let stem = (base as NSString).deletingPathExtension
+        var url = folder.appendingPathComponent(base)
+        var n = 2
+        while fm.fileExists(atPath: url.path) {
+            url = folder.appendingPathComponent("\(stem)-\(n).png")
+            n += 1
+        }
+        return url
     }
 
     /// Kayıtlı görüntüler — en yeniden eskiye.

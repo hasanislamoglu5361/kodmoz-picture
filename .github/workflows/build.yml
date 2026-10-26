@@ -1,0 +1,73 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Swift sürümü
+        run: swift --version
+
+      - name: Derle (.app paketi, evrensel)
+        run: ./scripts/build.sh --universal
+
+      - name: Paketi doğrula
+        run: |
+          APP="build/Kodmoz Picture.app"
+          test -x "$APP/Contents/MacOS/KodmozPicture"
+          test -f "$APP/Contents/Info.plist"
+          test -f "$APP/Contents/Resources/AppIcon.icns"
+          codesign --verify --strict "$APP"
+          archs="$(lipo -archs "$APP/Contents/MacOS/KodmozPicture")"
+          echo "mimari: $archs"
+          case "$archs" in
+            *arm64*) ;;
+            *) echo "HATA: arm64 eksik" >&2; exit 1 ;;
+          esac
+          case "$archs" in
+            *x86_64*) ;;
+            *) echo "HATA: x86_64 eksik" >&2; exit 1 ;;
+          esac
+
+      - name: İkon üretimini doğrula
+        run: |
+          "build/Kodmoz Picture.app/Contents/MacOS/KodmozPicture" --make-icon "$PWD/build/icon-check"
+          test -f "build/icon-check/AppIcon.iconset/icon_512x512@2x.png"
+          echo "OK: ikon seti üretildi"
+
+      - name: Paketle
+        run: |
+          cd build
+          ditto -c -k --sequesterRsrc --keepParent "Kodmoz Picture.app" "KodmozPicture-macos.zip"
+          shasum -a 256 KodmozPicture-macos.zip > KodmozPicture-macos.zip.sha256
+          ls -la
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: KodmozPicture-macos
+          path: |
+            build/KodmozPicture-macos.zip
+            build/KodmozPicture-macos.zip.sha256
+          retention-days: 30
+
+      - name: Sürüm çıktısı (tag)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            build/KodmozPicture-macos.zip
+            build/KodmozPicture-macos.zip.sha256
+          generate_release_notes: true
