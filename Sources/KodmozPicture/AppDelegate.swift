@@ -31,6 +31,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
         UNUserNotificationCenter.current().delegate = self
         requestNotificationPermission()
         ensureFolderExists()
+
+        // macOS izni süreç başlarken okur; izin verildiği hâlde eski süreç
+        // bunu göremez. Bu yüzden açılışta izni kesinleştirip gerekirse
+        // uygulamayı bir kez yeniden başlatıyoruz.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+            ScreenPermission.ensureAtLaunch()
+        }
     }
 
     func applicationWillTerminate(_ notification: Notification) {
@@ -41,15 +48,27 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
 
     private func registerHotKey() {
         hotKey?.unregister()
-        hotKey = HotKey(keyCode: Preferences.shared.hotKeyCode,
-                        modifiers: Preferences.shared.hotKeyModifiers) { [weak self] in
+        let code = Preferences.shared.hotKeyCode
+        let mods = Preferences.shared.hotKeyModifiers
+        hotKey = HotKey(keyCode: code, modifiers: mods) { [weak self] in
+            NSLog("KodmozPicture: kısayol tetiklendi")
             self?.captureWithFeedback()
         }
+        let desc = Preferences.describe(code: code, modifiers: mods)
         if hotKey == nil {
-            NSLog("KodmozPicture: kısayol kaydedilemedi (başka uygulama kullanıyor olabilir)")
+            NSLog("KodmozPicture: kısayol kaydedilemedi — \(desc)")
+            if let m = statusItem.menu {
+                // Kısayolun neden çalışmadığını menüde görünür kıl.
+                let uyari = NSMenuItem(title: "⚠︎ \(desc) kullanılamıyor (başka uygulama tutuyor)",
+                                       action: #selector(openSettings), keyEquivalent: "")
+                uyari.target = self
+                m.insertItem(uyari, at: 0)
+                m.insertItem(.separator(), at: 1)
+            }
+        } else {
+            NSLog("KodmozPicture: kısayol kaydedildi — \(desc)")
         }
-        statusItem.button?.toolTip =
-            "Kodmoz Picture — \(Preferences.describe(code: Preferences.shared.hotKeyCode, modifiers: Preferences.shared.hotKeyModifiers))"
+        statusItem.button?.toolTip = "Kodmoz Picture — \(desc)"
     }
 
     @objc private func prefsChanged() {

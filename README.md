@@ -10,7 +10,7 @@ ve menü çubuğundaki simgeden **son görüntüleri küçük resimlerle** göst
 
 ## Özellikler
 
-- **Global kısayol** (varsayılan `⌘⇧P`) — erişilebilirlik izni **gerektirmez** (Carbon `RegisterEventHotKey`)
+- **Global kısayol** (varsayılan `⌘⇧6`) — erişilebilirlik izni **gerektirmez** (Carbon `RegisterEventHotKey`)
 - **Panoya otomatik kopyalama** — görüntü + dosya referansı birlikte yazılır (WhatsApp/Finder/Slack hedefleri dosyayı tanır)
 - **Otomatik kayıt** — `~/Pictures/KodmozPicture/Kodmoz 2026-10-25 at 18.30.12.png` biçiminde, klasör değiştirilebilir
 - **Dört yakalama modu** — tüm ekranlar (varsayılan), ana ekran (`-m`), alan seçimi (`-i`), pencere seçimi (`-w`)
@@ -54,13 +54,14 @@ yeniden isteyebilir.
 
 > Sistem Ayarları → Gizlilik ve Güvenlik → **Ekran Kaydı** → **Kodmoz Picture** ✓
 
-Sonra uygulamayı bir kez kapat-aç. (Kısayol için erişilebilirlik izni **gerekmez**.)
+Sonrasında elle bir şey yapmanız gerekmez: uygulama izni algıladığında kendini otomatik
+yeniden başlatır. (Kısayol için erişilebilirlik izni **gerekmez**.)
 
 ## Kullanım
 
 | Ne | Nasıl |
 |---|---|
-| Ekran görüntüsü | `⌘⇧P` (Ayarlar'dan değiştirilebilir) |
+| Ekran görüntüsü | `⌘⇧6` (Ayarlar'dan değiştirilebilir) |
 | Alan seçerek | Menü → *Alan Seçerek Al* |
 | Pencere seçerek | Menü → *Pencere Seçerek Al* |
 | Geçmiş | Menü çubuğu simgesi → *Son Görüntüler* |
@@ -89,9 +90,15 @@ Ekran görüntüsü `/usr/sbin/screencapture` ile alınır (Apple'ın kendi arac
 
 ## Sorun giderme
 
-- **Kısayol çalışmıyor** → başka bir uygulama `⌘⇧P`'yi kullanıyor olabilir; Ayarlar'dan başka kombinasyon seç.
+- **Kısayol çalışmıyor** → başka bir uygulama `⌘⇧6`'yı kullanıyor olabilir; Ayarlar'dan başka kombinasyon seç.
+  Kısayol kaydedilemezse menünün en üstünde uyarı satırı görünür.
 - **Siyah/boş görüntü** → Ekran Kaydı izni verilmemiş; uygulama izni olmadığını algılayıp
-  Sistem Ayarları'nı açar. İzin verdikten sonra uygulamayı kapat-aç.
+  Sistem Ayarları'nı açar. İzin verdiğinizde kendini otomatik yeniden başlatır — elle kapat-aç gerekmez.
+- **İzin verdiğim hâlde tekrar tekrar izin istiyor** → macOS izin kararını süreç başlarken okur;
+  çalışan süreç izni göremez. Güncel sürüm izni algılayınca kendini yeniden başlatır ve uyarıyı
+  çalışma başına bir kez gösterir. Anahtar açık göründüğü hâlde sorun sürüyorsa eski bir TCC kaydı
+  kalmıştır (imza değişikliğinde olur): uyarıdaki **İzni Sıfırla** düğmesini kullanın ya da
+  `tccutil reset ScreenCapture com.kodmoz.picture` çalıştırın.
 - **"Uygulama hasarlı" uyarısı** → ad-hoc imza sonrası Gatekeeper uyarısı; `install.sh` karantinayı
   temizler. Elle kopyaladıysan: `xattr -dr com.apple.quarantine "/Applications/Kodmoz Picture.app"`.
 - **Menü simgesi görünmüyor** → `killall SystemUIServer` veya uygulamayı yeniden başlat.

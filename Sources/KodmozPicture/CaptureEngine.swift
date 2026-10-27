@@ -74,8 +74,10 @@ final class CaptureEngine {
             return nil
         case .failed:
             try? fm.removeItem(at: url)
-            if !CGPreflightScreenCaptureAccess() {
-                showScreenRecordingAlert()
+            if !ScreenPermission.isGranted {
+                if ScreenPermission.handleCaptureFailure() {
+                    ScreenPermission.presentAlert()
+                }
             } else {
                 NSSound.beep()
             }
@@ -158,20 +160,6 @@ final class CaptureEngine {
         pb.clearContents()
         // Görüntü + dosya referansı: Finder/WhatsApp/Slack dosyayı tanır.
         pb.writeObjects([image, url as NSURL])
-    }
-
-    private func showScreenRecordingAlert() {
-        guard NSApp.isRunning, Bundle.main.bundleIdentifier != nil else { return }
-        let alert = NSAlert()
-        alert.messageText = "Ekran Kaydı izni gerekiyor"
-        alert.informativeText = "Sistem Ayarları → Gizlilik ve Güvenlik → Ekran Kaydı "
-            + "bölümünde Kodmoz Picture'ı işaretleyin, sonra uygulamayı yeniden başlatın."
-        alert.addButton(withTitle: "Ayarları Aç")
-        alert.addButton(withTitle: "Kapat")
-        if alert.runModal() == .alertFirstButtonReturn,
-           let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture") {
-            NSWorkspace.shared.open(url)
-        }
     }
 
     static func fileName(date: Date = Date()) -> String {

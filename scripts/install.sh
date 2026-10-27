@@ -60,8 +60,8 @@ cat <<'NOT'
 Kurulum tamam. Yapılacaklar:
 1) İlk kısayolda macOS "Ekran Kaydı" izni ister:
    Sistem Ayarları → Gizlilik ve Güvenlik → Ekran Kaydı → Kodmoz Picture ✓
-   (İzin verdikten sonra uygulamayı bir kez kapat-aç.)
+   (İzin verince uygulama kendini otomatik yeniden başlatır.)
 2) Menü çubuğundaki vizör simgesine tıkla → "Son Görüntüler" geçmişi gösterir.
-3) Varsayılan kısayol: ⌘⇧P · Alan seçimi: menüden.
+3) Varsayılan kısayol: ⌘⇧6 · Alan seçimi: menüden.
 4) Girişte otomatik başlatma: Ayarlar → "Girişte otomatik başlat".
 NOT
