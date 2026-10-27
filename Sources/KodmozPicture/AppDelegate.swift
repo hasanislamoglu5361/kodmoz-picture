@@ -288,13 +288,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
         content.title = "Ekran görüntüsü alındı"
         content.body = "\(result.mode.shortTitle) · panoya kopyalandı\n\(result.url.lastPathComponent)"
         content.sound = nil
-        if let attach = try? UNNotificationAttachment(identifier: "shot", url: result.url,
-                                                      options: nil) {
+        // UNNotificationAttachment dosyayı KOPYALAMAZ, kendi deposuna TAŞIR.
+        // Doğrudan kayda eklersek kullanıcının dosyası klasörden kaybolur ve
+        // panodaki referans kırılır. Bu yüzden eke geçici bir kopya veriyoruz;
+        // sistem o kopyayı taşır, asıl dosya yerinde kalır.
+        if let attach = makeTemporaryAttachment(from: result.url) {
             content.attachments = [attach]
         }
         let req = UNNotificationRequest(identifier: UUID().uuidString, content: content,
                                         trigger: nil)
         UNUserNotificationCenter.current().add(req)
+    }
+
+    private func makeTemporaryAttachment(from url: URL) -> UNNotificationAttachment? {
+        let ext = url.pathExtension.isEmpty ? "png" : url.pathExtension
+        let tmp = FileManager.default.temporaryDirectory
+            .appendingPathComponent("kodmoz-bildirim-\(UUID().uuidString).\(ext)")
+        do {
+            try FileManager.default.copyItem(at: url, to: tmp)
+        } catch {
+            NSLog("KodmozPicture: bildirim eki kopyalanamadı — \(error)")
+            return nil
+        }
+        return try? UNNotificationAttachment(identifier: "shot", url: tmp, options: nil)
     }
 
     func userNotificationCenter(_ center: UNUserNotificationCenter,

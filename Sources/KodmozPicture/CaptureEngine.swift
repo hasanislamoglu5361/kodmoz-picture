@@ -159,7 +159,14 @@ final class CaptureEngine {
         let pb = NSPasteboard.general
         pb.clearContents()
         // Görüntü + dosya referansı: Finder/WhatsApp/Slack dosyayı tanır.
-        pb.writeObjects([image, url as NSURL])
+        // Dosya gerçekten duruyorsa referansı yaz; aksi hâlde hedef uygulama
+        // "dosya bulunamadı" der. Bu durumda yalnızca görüntüyü bırakırız.
+        if fm.fileExists(atPath: url.path) {
+            pb.writeObjects([image, url as NSURL])
+        } else {
+            NSLog("KodmozPicture: dosya referansı yazılmadı, dosya yok — \(url.path)")
+            pb.writeObjects([image])
+        }
     }
 
     static func fileName(date: Date = Date()) -> String {
