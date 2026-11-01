@@ -3,12 +3,18 @@ import ServiceManagement
 
 /// Kısayol kaydedici kutu: tıkla → "tuşlara bas" → kombinasyonu yakalar.
 final class HotKeyRecorderView: NSView {
-    var onChange: ((UInt32, UInt32) -> Void)?
+    var onChange: ((HotKeySpec) -> Void)?
+    /// Boş bırakılırsa Preferences'tan okunur; iki kısayol için açıkça veriliyor.
+    var spec: HotKeySpec {
+        didSet { updateTitle() }
+    }
+
     private var recording = false { didSet { updateTitle() } }
     private let label = NSTextField(labelWithString: "")
 
-    override init(frame: NSRect) {
-        super.init(frame: frame)
+    init(spec: HotKeySpec) {
+        self.spec = spec
+        super.init(frame: .zero)
         wantsLayer = true
         layer?.cornerRadius = 6
         layer?.borderWidth = 1
@@ -41,9 +47,8 @@ final class HotKeyRecorderView: NSView {
         }
         guard mods != 0 else { NSSound.beep(); return }
         recording = false
-        Preferences.shared.hotKeyCode = UInt32(event.keyCode)
-        Preferences.shared.hotKeyModifiers = mods
-        onChange?(UInt32(event.keyCode), mods)
+        spec = HotKeySpec(code: UInt32(event.keyCode), modifiers: mods)
+        onChange?(spec)
     }
 
     private func updateTitle() {
@@ -51,8 +56,7 @@ final class HotKeyRecorderView: NSView {
             label.stringValue = "Tuşlara bas… (ESC iptal)"
             label.textColor = .systemOrange
         } else {
-            label.stringValue = Preferences.describe(code: Preferences.shared.hotKeyCode,
-                                                     modifiers: Preferences.shared.hotKeyModifiers)
+            label.stringValue = spec.description
             label.font = .monospacedSystemFont(ofSize: 13, weight: .semibold)
             label.textColor = .labelColor
         }
@@ -108,14 +112,30 @@ final class PreferencesWindowController: NSWindowController {
             return l
         }
 
-        // 1) Kısayol
-        stack.addArrangedSubview(baslik("GLOBAL KISAYOL"))
-        let recorder = HotKeyRecorderView()
-        recorder.onChange = { code, mods in
-            Preferences.shared.hotKeyCode = code
-            Preferences.shared.hotKeyModifiers = mods
-        }
-        stack.addArrangedSubview(recorder)
+        // 1) Kısayollar
+        stack.addArrangedSubview(baslik("GLOBAL KISAYOLLAR"))
+
+        let selRow = NSStackView()
+        selRow.orientation = .horizontal
+        selRow.spacing = 10
+        let selLabel = NSTextField(labelWithString: "Alan seçerek al:")
+        selLabel.widthAnchor.constraint(equalToConstant: 130).isActive = true
+        let selRecorder = HotKeyRecorderView(spec: Preferences.shared.selectionHotKey)
+        selRecorder.onChange = { Preferences.shared.selectionHotKey = $0 }
+        selRow.addArrangedSubview(selLabel)
+        selRow.addArrangedSubview(selRecorder)
+        stack.addArrangedSubview(selRow)
+
+        let fullRow = NSStackView()
+        fullRow.orientation = .horizontal
+        fullRow.spacing = 10
+        let fullLabel = NSTextField(labelWithString: "Tam ekran al:")
+        fullLabel.widthAnchor.constraint(equalToConstant: 130).isActive = true
+        let fullRecorder = HotKeyRecorderView(spec: Preferences.shared.fullHotKey)
+        fullRecorder.onChange = { Preferences.shared.fullHotKey = $0 }
+        fullRow.addArrangedSubview(fullLabel)
+        fullRow.addArrangedSubview(fullRecorder)
+        stack.addArrangedSubview(fullRow)
 
         // 2) Kayıt klasörü
         stack.addArrangedSubview(baslik("KAYIT KLASÖRÜ"))
@@ -134,16 +154,7 @@ final class PreferencesWindowController: NSWindowController {
         folderLabel.widthAnchor.constraint(lessThanOrEqualToConstant: 250).isActive = true
         stack.addArrangedSubview(row)
 
-        // 3) Yakalama modu
-        stack.addArrangedSubview(baslik("KISAYOLUN YAKALAMA MODU"))
-        let modePopup = NSPopUpButton()
-        for m in CaptureMode.allCases { modePopup.addItem(withTitle: m.title) }
-        modePopup.selectItem(at: CaptureMode.allCases.firstIndex(of: Preferences.shared.mode) ?? 0)
-        modePopup.target = self
-        modePopup.action = #selector(modeChanged(_:))
-        stack.addArrangedSubview(modePopup)
-
-        // 4) Davranış
+        // 3) Davranış
         stack.addArrangedSubview(baslik("DAVRANIŞ"))
         let clip = NSButton(checkboxWithTitle: "Panoya otomatik kopyala",
                             target: self, action: #selector(toggleClipboard(_:)))
@@ -230,13 +241,6 @@ final class PreferencesWindowController: NSWindowController {
         NSWorkspace.shared.open(Preferences.shared.saveFolder)
     }
 
-    @objc private func modeChanged(_ sender: NSPopUpButton) {
-        let i = sender.indexOfSelectedItem
-        if i >= 0 && i < CaptureMode.allCases.count {
-            Preferences.shared.mode = CaptureMode.allCases[i]
-        }
-    }
-
     @objc private func countChanged(_ sender: NSPopUpButton) {
         if let v = Int(sender.titleOfSelectedItem ?? "12") {
             Preferences.shared.historyCount = v
@@ -269,7 +273,7 @@ final class PreferencesWindowController: NSWindowController {
     }
 
     @objc private func testCapture() {
-        if let r = CaptureEngine.shared.capture(mode: Preferences.shared.mode) {
+        if let r = CaptureEngine.shared.capture(mode: .selection) {
             NSWorkspace.shared.open(r.url)
         }
     }

@@ -35,20 +35,22 @@ if args.count > 1, args[1] == "--diagnose" {
     lines.append("sürüm: \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?")")
     lines.append("ekran kaydı preflight: \(CGPreflightScreenCaptureAccess())")
     lines.append("screencapture denemesi: \(probeCapture())")
-    let code = Preferences.shared.hotKeyCode
-    let mods = Preferences.shared.hotKeyModifiers
-    lines.append("kayıtlı kısayol: \(Preferences.describe(code: code, modifiers: mods)) "
-                 + "(keyCode=\(code) mods=\(mods))")
-    var ref: EventHotKeyRef?
-    let probeID = EventHotKeyID(signature: OSType(0x44494147), id: 1) // 'DIAG'
-    let st = RegisterEventHotKey(code, mods, probeID, GetApplicationEventTarget(), 0, &ref)
-    if st == noErr {
-        lines.append("kısayol kaydı: BOŞ (bu süreç kaydedebildi)")
-        if let r = ref { UnregisterEventHotKey(r) }
-    } else if st == OSStatus(-9878) {
-        lines.append("kısayol kaydı: DOLU (başka süreç tutuyor)")
-    } else {
-        lines.append("kısayol kaydı: HATA \(st)")
+    for (ad, spec) in [("alan seçimi", Preferences.shared.selectionHotKey),
+                       ("tam ekran", Preferences.shared.fullHotKey)] {
+        lines.append("kayıtlı kısayol (\(ad)): \(spec.description) "
+                     + "(keyCode=\(spec.code) mods=\(spec.modifiers))")
+        var ref: EventHotKeyRef?
+        let probeID = EventHotKeyID(signature: OSType(0x44494147), id: spec.code)
+        let st = RegisterEventHotKey(spec.code, spec.modifiers, probeID,
+                                     GetApplicationEventTarget(), 0, &ref)
+        if st == noErr {
+            lines.append("kısayol kaydı (\(ad)): BOŞ (bu süreç kaydedebildi)")
+            if let r = ref { UnregisterEventHotKey(r) }
+        } else if st == OSStatus(-9878) {
+            lines.append("kısayol kaydı (\(ad)): DOLU (başka süreç tutuyor)")
+        } else {
+            lines.append("kısayol kaydı (\(ad)): HATA \(st)")
+        }
     }
     if let bid = Bundle.main.bundleIdentifier {
         let n = NSRunningApplication.runningApplications(withBundleIdentifier: bid).count

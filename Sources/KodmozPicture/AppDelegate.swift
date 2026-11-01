@@ -7,7 +7,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
                          UNUserNotificationCenterDelegate {
 
     private var statusItem: NSStatusItem!
-    private var hotKey: HotKey?
+    private var selectionHotKey: HotKey?
+    private var fullHotKey: HotKey?
     private var prefsWindow: PreferencesWindowController?
     private var lastCapture: CaptureResult?
 
@@ -25,7 +26,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
         statusItem.menu = menu
         buildMenu(menu)
 
-        registerHotKey()
+        registerHotKeys()
         NotificationCenter.default.addObserver(self, selector: #selector(prefsChanged),
                                               name: Preferences.changed, object: nil)
         UNUserNotificationCenter.current().delegate = self
@@ -41,38 +42,56 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
     }
 
     func applicationWillTerminate(_ notification: Notification) {
-        hotKey?.unregister()
+        selectionHotKey?.unregister()
+        fullHotKey?.unregister()
     }
 
-    // MARK: - Kısayol
+    // MARK: - Kısayollar
 
-    private func registerHotKey() {
-        hotKey?.unregister()
-        let code = Preferences.shared.hotKeyCode
-        let mods = Preferences.shared.hotKeyModifiers
-        hotKey = HotKey(keyCode: code, modifiers: mods) { [weak self] in
-            NSLog("KodmozPicture: kısayol tetiklendi")
-            self?.captureWithFeedback()
+    /// İki bağımsız kısayol: ⌘⇧1 alan seçimi, ⌘⇧2 tüm ekran.
+    private func registerHotKeys() {
+        selectionHotKey?.unregister()
+        fullHotKey?.unregister()
+
+        let selection = Preferences.shared.selectionHotKey
+        let full = Preferences.shared.fullHotKey
+
+        selectionHotKey = HotKey(keyCode: selection.code, modifiers: selection.modifiers) {
+            [weak self] in
+            NSLog("KodmozPicture: alan seçimi kısayolu tetiklendi")
+            self?.captureWithFeedback(mode: .selection)
         }
-        let desc = Preferences.describe(code: code, modifiers: mods)
-        if hotKey == nil {
-            NSLog("KodmozPicture: kısayol kaydedilemedi — \(desc)")
-            if let m = statusItem.menu {
-                // Kısayolun neden çalışmadığını menüde görünür kıl.
-                let uyari = NSMenuItem(title: "⚠︎ \(desc) kullanılamıyor (başka uygulama tutuyor)",
-                                       action: #selector(openSettings), keyEquivalent: "")
-                uyari.target = self
-                m.insertItem(uyari, at: 0)
+        fullHotKey = HotKey(keyCode: full.code, modifiers: full.modifiers) { [weak self] in
+            NSLog("KodmozPicture: tam ekran kısayolu tetiklendi")
+            self?.captureWithFeedback(mode: .full)
+        }
+
+        NSLog("KodmozPicture: kısayollar — alan \(selection.description) "
+              + "(\(selectionHotKey == nil ? "KAYDEDİLEMEDİ" : "ok")), "
+              + "tam ekran \(full.description) "
+              + "(\(fullHotKey == nil ? "KAYDEDİLEMEDİ" : "ok"))")
+
+        if let m = statusItem.menu {
+            // Kısayolun neden çalışmadığını menüde görünür kıl.
+            var uyarilar: [String] = []
+            if selectionHotKey == nil { uyarilar.append(selection.description) }
+            if fullHotKey == nil { uyarilar.append(full.description) }
+            if !uyarilar.isEmpty {
+                let satir = NSMenuItem(
+                    title: "⚠︎ \(uyarilar.joined(separator: ", ")) kullanılamıyor "
+                        + "(başka uygulama tutuyor)",
+                    action: #selector(openSettings), keyEquivalent: "")
+                satir.target = self
+                m.insertItem(satir, at: 0)
                 m.insertItem(.separator(), at: 1)
             }
-        } else {
-            NSLog("KodmozPicture: kısayol kaydedildi — \(desc)")
         }
-        statusItem.button?.toolTip = "Kodmoz Picture — \(desc)"
+        statusItem.button?.toolTip = "Kodmoz Picture — alan \(selection.description)"
+            + " · tam ekran \(full.description)"
     }
 
     @objc private func prefsChanged() {
-        registerHotKey()
+        registerHotKeys()
         if let m = statusItem.menu { buildMenu(m) }
     }
 
@@ -80,18 +99,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
 
     private func buildMenu(_ menu: NSMenu) {
         menu.removeAllItems()
-        let hk = Preferences.describe(code: Preferences.shared.hotKeyCode,
-                                      modifiers: Preferences.shared.hotKeyModifiers)
+        let sel = Preferences.shared.selectionHotKey.description
+        let full = Preferences.shared.fullHotKey.description
 
-        let capture = NSMenuItem(title: "Ekran Görüntüsü Al",
+        let capture = NSMenuItem(title: "Tam Ekran Görüntüsü Al",
                                  action: #selector(captureNow), keyEquivalent: "")
         capture.target = self
-        capture.toolTip = hk
+        capture.toolTip = full
         menu.addItem(capture)
 
         let alt = NSMenuItem(title: "Alan Seçerek Al",
                              action: #selector(captureSelection), keyEquivalent: "")
         alt.target = self
+        alt.toolTip = sel
         menu.addItem(alt)
 
         let win = NSMenuItem(title: "Pencere Seçerek Al",
@@ -200,17 +220,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
 
     // MARK: - Eylemler
 
-    @objc private func captureNow() { captureWithFeedback(mode: Preferences.shared.mode) }
+    @objc private func captureNow() { captureWithFeedback(mode: .full) }
     @objc private func captureSelection() { captureWithFeedback(mode: .selection) }
     @objc private func captureWindow() { captureWithFeedback(mode: .window) }
 
-    private func captureWithFeedback(mode: CaptureMode? = nil) {
+    private func captureWithFeedback(mode: CaptureMode) {
         // Menü açıkken ekran görüntüsü alınacağı için önce menüyü kapat.
         statusItem.menu?.cancelTracking()
-        let m = mode ?? Preferences.shared.mode
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { [weak self] in
             guard let self = self else { return }
-            if let result = CaptureEngine.shared.capture(mode: m) {
+            if let result = CaptureEngine.shared.capture(mode: mode) {
                 self.lastCapture = result
                 self.notify(result)
                 self.rebuildHistoryMenu()

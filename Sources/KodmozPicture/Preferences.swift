@@ -2,6 +2,14 @@ import AppKit
 import Carbon.HIToolbox
 import Foundation
 
+/// Bir global kısayolun tuş kodu + değiştirici maskesi.
+struct HotKeySpec {
+    var code: UInt32
+    var modifiers: UInt32
+
+    var description: String { Preferences.describe(code: code, modifiers: modifiers) }
+}
+
 /// Tercihler — UserDefaults üzerinde ince bir sarmalayıcı.
 final class Preferences {
     static let shared = Preferences()
@@ -11,22 +19,25 @@ final class Preferences {
 
     private enum K {
         static let folder = "saveFolder"
-        static let mode = "captureMode"
         static let copyClipboard = "copyToClipboard"
         static let historyCount = "historyCount"
-        static let hotKeyCode = "hotKeyCode"
-        static let hotKeyMods = "hotKeyModifiers"
+        static let selectionCode = "selectionHotKeyCode"
+        static let selectionMods = "selectionHotKeyModifiers"
+        static let fullCode = "fullHotKeyCode"
+        static let fullMods = "fullHotKeyModifiers"
         static let showNotification = "showNotification"
         static let playSound = "playSound"
     }
 
     private init() {
+        let cmdShift = HotKey.carbonModifiers([.command, .shift])
         d.register(defaults: [
-            K.mode: CaptureMode.selection.rawValue,
             K.copyClipboard: true,
             K.historyCount: 12,
-            K.hotKeyCode: Int(kVK_ANSI_7),
-            K.hotKeyMods: HotKey.carbonModifiers([.command, .shift]),
+            K.selectionCode: Int(kVK_ANSI_1),
+            K.selectionMods: cmdShift,
+            K.fullCode: Int(kVK_ANSI_2),
+            K.fullMods: cmdShift,
             K.showNotification: true,
             K.playSound: true,
         ])
@@ -45,11 +56,6 @@ final class Preferences {
             d.set(newValue.path, forKey: K.folder)
             announce()
         }
-    }
-
-    var mode: CaptureMode {
-        get { CaptureMode(rawValue: d.string(forKey: K.mode) ?? "") ?? .full }
-        set { d.set(newValue.rawValue, forKey: K.mode); announce() }
     }
 
     var copyToClipboard: Bool {
@@ -72,21 +78,37 @@ final class Preferences {
         set { d.set(max(1, min(50, newValue)), forKey: K.historyCount); announce() }
     }
 
-    var hotKeyCode: UInt32 {
-        get { UInt32(d.integer(forKey: K.hotKeyCode)) }
-        set { d.set(Int(newValue), forKey: K.hotKeyCode); announce() }
+    /// Alan seçerek yakalama — ⌘⇧1
+    var selectionHotKey: HotKeySpec {
+        get {
+            HotKeySpec(code: UInt32(d.integer(forKey: K.selectionCode)),
+                       modifiers: UInt32(d.integer(forKey: K.selectionMods)))
+        }
+        set {
+            d.set(Int(newValue.code), forKey: K.selectionCode)
+            d.set(Int(newValue.modifiers), forKey: K.selectionMods)
+            announce()
+        }
     }
 
-    var hotKeyModifiers: UInt32 {
-        get { UInt32(d.integer(forKey: K.hotKeyMods)) }
-        set { d.set(Int(newValue), forKey: K.hotKeyMods); announce() }
+    /// Tüm ekranı yakalama — ⌘⇧2
+    var fullHotKey: HotKeySpec {
+        get {
+            HotKeySpec(code: UInt32(d.integer(forKey: K.fullCode)),
+                       modifiers: UInt32(d.integer(forKey: K.fullMods)))
+        }
+        set {
+            d.set(Int(newValue.code), forKey: K.fullCode)
+            d.set(Int(newValue.modifiers), forKey: K.fullMods)
+            announce()
+        }
     }
 
     private func announce() {
         NotificationCenter.default.post(name: Preferences.changed, object: nil)
     }
 
-    /// İnsan okur biçim: "⌘⇧7"
+    /// İnsan okur biçim: "⌘⇧1"
     static func describe(code: UInt32, modifiers: UInt32) -> String {
         var s = ""
         if modifiers & UInt32(cmdKey) != 0 { s += "⌘" }
