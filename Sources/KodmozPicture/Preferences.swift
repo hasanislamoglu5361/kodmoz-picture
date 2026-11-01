@@ -22,10 +22,10 @@ final class Preferences {
 
     private init() {
         d.register(defaults: [
-            K.mode: CaptureMode.full.rawValue,
+            K.mode: CaptureMode.selection.rawValue,
             K.copyClipboard: true,
             K.historyCount: 12,
-            K.hotKeyCode: Int(kVK_ANSI_6),
+            K.hotKeyCode: Int(kVK_ANSI_7),
             K.hotKeyMods: HotKey.carbonModifiers([.command, .shift]),
             K.showNotification: true,
             K.playSound: true,
@@ -86,7 +86,7 @@ final class Preferences {
         NotificationCenter.default.post(name: Preferences.changed, object: nil)
     }
 
-    /// İnsan okur biçim: "⌘⇧6"
+    /// İnsan okur biçim: "⌘⇧7"
     static func describe(code: UInt32, modifiers: UInt32) -> String {
         var s = ""
         if modifiers & UInt32(cmdKey) != 0 { s += "⌘" }

@@ -62,6 +62,6 @@ Kurulum tamam. Yapılacaklar:
    Sistem Ayarları → Gizlilik ve Güvenlik → Ekran Kaydı → Kodmoz Picture ✓
    (İzin verince uygulama kendini otomatik yeniden başlatır.)
 2) Menü çubuğundaki vizör simgesine tıkla → "Son Görüntüler" geçmişi gösterir.
-3) Varsayılan kısayol: ⌘⇧6 · Alan seçimi: menüden.
+3) Varsayılan kısayol: ⌘⇧7 — alan seçerek ekran görüntüsü alır.
 4) Girişte otomatik başlatma: Ayarlar → "Girişte otomatik başlat".
 NOT

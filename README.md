@@ -10,10 +10,10 @@ ve menü çubuğundaki simgeden **son görüntüleri küçük resimlerle** göst
 
 ## Özellikler
 
-- **Global kısayol** (varsayılan `⌘⇧6`) — erişilebilirlik izni **gerektirmez** (Carbon `RegisterEventHotKey`)
+- **Global kısayol** (varsayılan `⌘⇧7`, alan seçimi) — erişilebilirlik izni **gerektirmez** (Carbon `RegisterEventHotKey`)
 - **Panoya otomatik kopyalama** — görüntü + dosya referansı birlikte yazılır (WhatsApp/Finder/Slack hedefleri dosyayı tanır)
 - **Otomatik kayıt** — `~/Pictures/KodmozPicture/Kodmoz 2026-10-25 at 18.30.12.png` biçiminde, klasör değiştirilebilir
-- **Dört yakalama modu** — tüm ekranlar (varsayılan), ana ekran (`-m`), alan seçimi (`-i`), pencere seçimi (`-w`)
+- **Dört yakalama modu** — alan seçimi (varsayılan), tüm ekranlar, ana ekran (`-m`), pencere seçimi (`-w`)
 - **Menü çubuğu geçmişi** — son N görüntü küçük resimle listelenir; tıkla → Önizleme'de aç,
   alt menüden **Panoya Kopyala / Finder'da Göster / Çöp Kutusuna Taşı**
 - **Bildirim** — yakalanan görüntünün küçük önizlemesiyle bildirim banner'ı
@@ -61,7 +61,7 @@ yeniden başlatır. (Kısayol için erişilebilirlik izni **gerekmez**.)
 
 | Ne | Nasıl |
 |---|---|
-| Ekran görüntüsü | `⌘⇧6` (Ayarlar'dan değiştirilebilir) |
+| Ekran görüntüsü (alan seçerek) | `⌘⇧7` (Ayarlar'dan değiştirilebilir) |
 | Alan seçerek | Menü → *Alan Seçerek Al* |
 | Pencere seçerek | Menü → *Pencere Seçerek Al* |
 | Geçmiş | Menü çubuğu simgesi → *Son Görüntüler* |
@@ -90,7 +90,7 @@ Ekran görüntüsü `/usr/sbin/screencapture` ile alınır (Apple'ın kendi arac
 
 ## Sorun giderme
 
-- **Kısayol çalışmıyor** → başka bir uygulama `⌘⇧6`'yı kullanıyor olabilir; Ayarlar'dan başka kombinasyon seç.
+- **Kısayol çalışmıyor** → başka bir uygulama `⌘⇧7`'yi kullanıyor olabilir; Ayarlar'dan başka kombinasyon seç.
   Kısayol kaydedilemezse menünün en üstünde uyarı satırı görünür.
 - **Siyah/boş görüntü** → Ekran Kaydı izni verilmemiş; uygulama izni olmadığını algılayıp
   Sistem Ayarları'nı açar. İzin verdiğinizde kendini otomatik yeniden başlatır — elle kapat-aç gerekmez.
