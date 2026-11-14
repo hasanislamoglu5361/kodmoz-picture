@@ -25,6 +25,9 @@ final class Preferences {
         static let selectionMods = "selectionHotKeyModifiers"
         static let fullCode = "fullHotKeyCode"
         static let fullMods = "fullHotKeyModifiers"
+        static let magnifierCode = "magnifierHotKeyCode"
+        static let magnifierMods = "magnifierHotKeyModifiers"
+        static let magnifierZoom = "magnifierZoom"
         static let showNotification = "showNotification"
         static let playSound = "playSound"
     }
@@ -38,6 +41,9 @@ final class Preferences {
             K.selectionMods: cmdShift,
             K.fullCode: Int(kVK_ANSI_2),
             K.fullMods: cmdShift,
+            K.magnifierCode: Int(kVK_ANSI_S),
+            K.magnifierMods: cmdShift,
+            K.magnifierZoom: 3.0,
             K.showNotification: true,
             K.playSound: true,
         ])
@@ -102,6 +108,29 @@ final class Preferences {
             d.set(Int(newValue.modifiers), forKey: K.fullMods)
             announce()
         }
+    }
+
+    /// Canlı büyüteç — ⌘⇧S
+    var magnifierHotKey: HotKeySpec {
+        get {
+            HotKeySpec(code: UInt32(d.integer(forKey: K.magnifierCode)),
+                       modifiers: UInt32(d.integer(forKey: K.magnifierMods)))
+        }
+        set {
+            d.set(Int(newValue.code), forKey: K.magnifierCode)
+            d.set(Int(newValue.modifiers), forKey: K.magnifierMods)
+            announce()
+        }
+    }
+
+    /// Büyüteç oranı (1,5×–8×). Tekerlekle değiştikçe hatırlanır; kısayolları
+    /// yeniden kaydettirmemek için `announce()` çağrılmaz.
+    var magnifierZoom: Double {
+        get {
+            let v = d.double(forKey: K.magnifierZoom)
+            return v > 0 ? min(8, max(1.5, v)) : 3.0
+        }
+        set { d.set(min(8, max(1.5, newValue)), forKey: K.magnifierZoom) }
     }
 
     private func announce() {

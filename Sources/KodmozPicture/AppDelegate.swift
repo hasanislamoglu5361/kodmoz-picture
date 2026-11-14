@@ -9,6 +9,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
     private var statusItem: NSStatusItem!
     private var selectionHotKey: HotKey?
     private var fullHotKey: HotKey?
+    private var magnifierHotKey: HotKey?
     private var prefsWindow: PreferencesWindowController?
     private var lastCapture: CaptureResult?
 
@@ -44,6 +45,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
     func applicationWillTerminate(_ notification: Notification) {
         selectionHotKey?.unregister()
         fullHotKey?.unregister()
+        magnifierHotKey?.unregister()
+        MagnifierController.shared.close()
     }
 
     // MARK: - Kısayollar
@@ -52,9 +55,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
     private func registerHotKeys() {
         selectionHotKey?.unregister()
         fullHotKey?.unregister()
+        magnifierHotKey?.unregister()
 
         let selection = Preferences.shared.selectionHotKey
         let full = Preferences.shared.fullHotKey
+        let magnifier = Preferences.shared.magnifierHotKey
 
         selectionHotKey = HotKey(keyCode: selection.code, modifiers: selection.modifiers) {
             [weak self] in
@@ -65,17 +70,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
             NSLog("KodmozPicture: tam ekran kısayolu tetiklendi")
             self?.captureWithFeedback(mode: .full)
         }
+        magnifierHotKey = HotKey(keyCode: magnifier.code, modifiers: magnifier.modifiers) {
+            [weak self] in
+            NSLog("KodmozPicture: büyüteç kısayolu tetiklendi")
+            self?.toggleMagnifier()
+        }
 
         NSLog("KodmozPicture: kısayollar — alan \(selection.description) "
               + "(\(selectionHotKey == nil ? "KAYDEDİLEMEDİ" : "ok")), "
               + "tam ekran \(full.description) "
-              + "(\(fullHotKey == nil ? "KAYDEDİLEMEDİ" : "ok"))")
+              + "(\(fullHotKey == nil ? "KAYDEDİLEMEDİ" : "ok")), "
+              + "büyüteç \(magnifier.description) "
+              + "(\(magnifierHotKey == nil ? "KAYDEDİLEMEDİ" : "ok"))")
 
         if let m = statusItem.menu {
             // Kısayolun neden çalışmadığını menüde görünür kıl.
             var uyarilar: [String] = []
             if selectionHotKey == nil { uyarilar.append(selection.description) }
             if fullHotKey == nil { uyarilar.append(full.description) }
+            if magnifierHotKey == nil { uyarilar.append(magnifier.description) }
             if !uyarilar.isEmpty {
                 let satir = NSMenuItem(
                     title: "⚠︎ \(uyarilar.joined(separator: ", ")) kullanılamıyor "
@@ -88,6 +101,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
         }
         statusItem.button?.toolTip = "Kodmoz Picture — alan \(selection.description)"
             + " · tam ekran \(full.description)"
+            + " · büyüteç \(magnifier.description)"
     }
 
     @objc private func prefsChanged() {
@@ -118,6 +132,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
                              action: #selector(captureWindow), keyEquivalent: "")
         win.target = self
         menu.addItem(win)
+
+        menu.addItem(.separator())
+
+        let lens = NSMenuItem(title: "Büyüteç",
+                              action: #selector(toggleMagnifier), keyEquivalent: "")
+        lens.target = self
+        lens.toolTip = "\(Preferences.shared.magnifierHotKey.description) · "
+            + "tekerlek/pinç: yakınlaştır · ESC: kapat"
+        menu.addItem(lens)
 
         menu.addItem(.separator())
 
@@ -223,8 +246,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
     @objc private func captureNow() { captureWithFeedback(mode: .full) }
     @objc private func captureSelection() { captureWithFeedback(mode: .selection) }
     @objc private func captureWindow() { captureWithFeedback(mode: .window) }
+    @objc private func toggleMagnifier() { MagnifierController.shared.toggle() }
 
     private func captureWithFeedback(mode: CaptureMode) {
+        // Mercek açıksa görüntüye kendi merceğimiz girmesin.
+        MagnifierController.shared.close()
         // Menü açıkken ekran görüntüsü alınacağı için önce menüyü kapat.
         statusItem.menu?.cancelTracking()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) { [weak self] in
@@ -277,6 +303,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate,
     }
 
     @objc private func openSettings() {
+        MagnifierController.shared.close()
         if prefsWindow == nil { prefsWindow = PreferencesWindowController() }
         prefsWindow?.showWindow(nil)
         NSApp.activate(ignoringOtherApps: true)

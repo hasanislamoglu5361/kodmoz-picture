@@ -29,14 +29,27 @@ if args.count > 1, args[1] == "--diagnose" {
         return size > 0 ? "BAŞARILI (\(size) bayt)" : "BAŞARISIZ (stderr: \(stderr))"
     }
 
+    /// Büyütecin kullandığı küçük bölge yakalamasını dener.
+    func probeLensCapture() -> String {
+        let b = CGDisplayBounds(CGMainDisplayID())
+        let r = CGRect(x: b.midX - 50, y: b.midY - 50, width: 100, height: 100)
+        if let img = CGWindowListCreateImage(r, .optionOnScreenOnly,
+                                             kCGNullWindowID, [.bestResolution]) {
+            return "BAŞARILI (\(img.width)×\(img.height) px)"
+        }
+        return "BAŞARISIZ (nil)"
+    }
+
     var lines: [String] = []
     lines.append("yol: \(Bundle.main.bundlePath)")
     lines.append("bundleID: \(Bundle.main.bundleIdentifier ?? "yok")")
     lines.append("sürüm: \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "?")")
     lines.append("ekran kaydı preflight: \(CGPreflightScreenCaptureAccess())")
     lines.append("screencapture denemesi: \(probeCapture())")
+    lines.append("büyüteç yakalaması: \(probeLensCapture())")
     for (ad, spec) in [("alan seçimi", Preferences.shared.selectionHotKey),
-                       ("tam ekran", Preferences.shared.fullHotKey)] {
+                       ("tam ekran", Preferences.shared.fullHotKey),
+                       ("büyüteç", Preferences.shared.magnifierHotKey)] {
         lines.append("kayıtlı kısayol (\(ad)): \(spec.description) "
                      + "(keyCode=\(spec.code) mods=\(spec.modifiers))")
         var ref: EventHotKeyRef?

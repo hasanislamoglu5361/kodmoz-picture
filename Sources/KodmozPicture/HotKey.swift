@@ -23,8 +23,12 @@ final class HotKey {
         return m
     }
 
-    init?(keyCode: UInt32, modifiers: UInt32, callback: @escaping () -> Void) {
-        guard modifiers != 0 else { return nil }
+    /// - Parameter allowNoModifiers: Büyüteç açıkken ESC gibi tek başına
+    ///   basılan tuşları kaydetmek için. Normal kısayollarda değiştirici
+    ///   zorunlu; yoksa yazarken istemeden tetiklenir.
+    init?(keyCode: UInt32, modifiers: UInt32, allowNoModifiers: Bool = false,
+          callback: @escaping () -> Void) {
+        guard modifiers != 0 || allowNoModifiers else { return nil }
         self.callback = callback
         self.handlerID = HotKey.nextID
         HotKey.nextID += 1

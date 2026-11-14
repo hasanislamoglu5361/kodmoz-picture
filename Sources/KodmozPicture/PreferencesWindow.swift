@@ -137,6 +137,23 @@ final class PreferencesWindowController: NSWindowController {
         fullRow.addArrangedSubview(fullRecorder)
         stack.addArrangedSubview(fullRow)
 
+        let magRow = NSStackView()
+        magRow.orientation = .horizontal
+        magRow.spacing = 10
+        let magLabel = NSTextField(labelWithString: "Büyüteç:")
+        magLabel.widthAnchor.constraint(equalToConstant: 130).isActive = true
+        let magRecorder = HotKeyRecorderView(spec: Preferences.shared.magnifierHotKey)
+        magRecorder.onChange = { Preferences.shared.magnifierHotKey = $0 }
+        magRow.addArrangedSubview(magLabel)
+        magRow.addArrangedSubview(magRecorder)
+        stack.addArrangedSubview(magRow)
+
+        let magHint = NSTextField(labelWithString:
+            "Büyüteç açıkken tekerlek/pinç ile yakınlaştır, ESC ile kapat.")
+        magHint.font = .systemFont(ofSize: 11)
+        magHint.textColor = .tertiaryLabelColor
+        stack.addArrangedSubview(magHint)
+
         // 2) Kayıt klasörü
         stack.addArrangedSubview(baslik("KAYIT KLASÖRÜ"))
         let row = NSStackView()
@@ -273,6 +290,7 @@ final class PreferencesWindowController: NSWindowController {
     }
 
     @objc private func testCapture() {
+        MagnifierController.shared.close()
         if let r = CaptureEngine.shared.capture(mode: .selection) {
             NSWorkspace.shared.open(r.url)
         }

@@ -10,14 +10,16 @@ ve menü çubuğundaki simgeden **son görüntüleri küçük resimlerle** göst
 
 ## Özellikler
 
-- **İki global kısayol** — `⌘⇧1` alan seçerek, `⌘⇧2` tam ekran — erişilebilirlik izni **gerektirmez** (Carbon `RegisterEventHotKey`)
+- **Üç global kısayol** — `⌘⇧1` alan seçerek, `⌘⇧2` tam ekran, `⌘⇧S` canlı büyüteç — erişilebilirlik izni **gerektirmez** (Carbon `RegisterEventHotKey`)
+- **Canlı büyüteç** — `⌘⇧S` fareyi izleyen bir mercek açar; küçük yazıları büyütüp okumak için.
+  Tekerlek veya pinç ile **1,5×–8×** yakınlaştırma, `ESC` (veya tık) ile kapatma. Oran hatırlanır.
 - **Panoya otomatik kopyalama** — görüntü + dosya referansı birlikte yazılır (WhatsApp/Finder/Slack hedefleri dosyayı tanır)
 - **Otomatik kayıt** — `~/Pictures/KodmozPicture/Kodmoz 2026-10-25 at 18.30.12.png` biçiminde, klasör değiştirilebilir
 - **Dört yakalama modu** — alan seçimi (`⌘⇧1`), tüm ekranlar (`⌘⇧2`), ana ekran (`-m`), pencere seçimi (`-w`)
 - **Menü çubuğu geçmişi** — son N görüntü küçük resimle listelenir; tıkla → Önizleme'de aç,
   alt menüden **Panoya Kopyala / Finder'da Göster / Çöp Kutusuna Taşı**
 - **Bildirim** — yakalanan görüntünün küçük önizlemesiyle bildirim banner'ı
-- **Ayarlar penceresi** — iki kısayol kaydedici, klasör seçimi, pano/bildirim/ses açma-kapama, geçmiş sayısı
+- **Ayarlar penceresi** — üç kısayol kaydedici, klasör seçimi, pano/bildirim/ses açma-kapama, geçmiş sayısı
 - **Girişte otomatik başlat** — `SMAppService` ile (LaunchAgent dosyası elle kurcalanmaz)
 - **Vektörel logo** — ikon ve menü simgesi kodda `NSBezierPath` ile çizilir; harici görsel dosyası yok
 - **Dock'ta görünmez** (`LSUIElement`) — sadece menü çubuğu
@@ -63,6 +65,7 @@ yeniden başlatır. (Kısayol için erişilebilirlik izni **gerekmez**.)
 |---|---|
 | Alan seçerek ekran görüntüsü | `⌘⇧1` (Ayarlar'dan değiştirilebilir) |
 | Tam ekran görüntüsü | `⌘⇧2` (Ayarlar'dan değiştirilebilir) |
+| Canlı büyüteç | `⌘⇧S` (Ayarlar'dan değiştirilebilir) · tekerlek/pinç: yakınlaştır · `ESC`: kapat |
 | Alan seçerek | Menü → *Alan Seçerek Al* |
 | Pencere seçerek | Menü → *Pencere Seçerek Al* |
 | Geçmiş | Menü çubuğu simgesi → *Son Görüntüler* |
@@ -73,12 +76,13 @@ yeniden başlatır. (Kısayol için erişilebilirlik izni **gerekmez**.)
 
 ```
 Sources/KodmozPicture/
-  main.swift            giriş noktası + CLI (--capture / --make-icon)
+  main.swift            giriş noktası + CLI (--capture / --make-icon / --diagnose)
   AppDelegate.swift     menü çubuğu, menü kurulumu, geçmiş, bildirim
-  HotKey.swift          Carbon global kısayol (izin gerektirmez) — ⌘⇧1 ve ⌘⇧2
+  HotKey.swift          Carbon global kısayol (izin gerektirmez) — ⌘⇧1, ⌘⇧2, ⌘⇧S
   CaptureEngine.swift   screencapture çağrısı, pano, dosya adlandırma, geçmiş listesi
+  Magnifier.swift       fareyi izleyen canlı büyüteç (küçük bölge yakalama + NSPanel)
   Preferences.swift     UserDefaults sarmalayıcısı + kısayol tanımı
-  PreferencesWindow.swift  ayarlar arayüzü + iki kısayol kaydedici + SMAppService
+  PreferencesWindow.swift  ayarlar arayüzü + üç kısayol kaydedici + SMAppService
   LogoRenderer.swift    vektörel logo (ikon + menü simgesi) ve .iconset üretimi
 scripts/
   build.sh              .app paketi (ikon → bundle → imza), --universal desteği
@@ -91,8 +95,13 @@ Ekran görüntüsü `/usr/sbin/screencapture` ile alınır (Apple'ın kendi arac
 
 ## Sorun giderme
 
-- **Kısayol çalışmıyor** → başka bir uygulama `⌘⇧1` / `⌘⇧2`'yi kullanıyor olabilir; Ayarlar'dan başka kombinasyon seç.
+- **Kısayol çalışmıyor** → başka bir uygulama `⌘⇧1` / `⌘⇧2` / `⌘⇧S`'yi kullanıyor olabilir; Ayarlar'dan başka kombinasyon seç.
   Kısayol kaydedilemezse menünün en üstünde uyarı satırı görünür.
+- **⌘⇧S artık uygulamalarda “Farklı Kaydet”i açmıyor** → global kısayol olduğu için bu kombinasyon sistem
+  genelinde yakalanır. İstersen Ayarlar → *Büyüteç* satırından başka bir kombinasyon seç.
+- **Büyüteç siyah/boş** → Ekran Kaydı izni yok demektir; yukarıdaki izin adımını uygula. İzin verilmişse
+  büyüteç kendi penceresini yakalamamak için ekranı “pencerenin altından” okur; ekran kenarında kalan
+  bölge doğal olarak siyahtır.
 - **Siyah/boş görüntü** → Ekran Kaydı izni verilmemiş; uygulama izni olmadığını algılayıp
   Sistem Ayarları'nı açar. İzin verdiğinizde kendini otomatik yeniden başlatır — elle kapat-aç gerekmez.
 - **İzin verdiğim hâlde tekrar tekrar izin istiyor** → macOS izin kararını süreç başlarken okur;
